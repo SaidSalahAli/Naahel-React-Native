@@ -9,18 +9,30 @@ import { callMoodleApi, MOODLE_FUNCTIONS } from "@/utils/coreApi";
 
 /**
  * Get tenant information and configuration
+ * Can be called with either object params or individual tenantId/language
  */
 export async function getTenantInfo(
-  tenantId: string,
-  language: string,
+  paramsOrTenantId: { url?: string; lang?: string; code?: string } | string,
+  language?: string,
 ): Promise<Tenant> {
   try {
+    let params: any;
+
+    // Support both call signatures for backward compatibility
+    if (typeof paramsOrTenantId === "string") {
+      // Old format: getTenantInfo(tenantId, language)
+      params = {
+        tenantid: paramsOrTenantId,
+        lang: language || "en",
+      };
+    } else {
+      // New format: getTenantInfo({ url, lang, code })
+      params = paramsOrTenantId;
+    }
+
     const response = await callMoodleApi<Tenant>(
       MOODLE_FUNCTIONS.GET_TENANT_INFO,
-      {
-        tenantid: tenantId,
-        lang: language,
-      },
+      params,
       MOODLE_CONFIG.DEFAULT_WS_TOKEN,
     );
 

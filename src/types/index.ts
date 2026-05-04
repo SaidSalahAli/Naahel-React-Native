@@ -161,7 +161,7 @@ export interface TenantContextType {
   tenantHeaderInfo: TenantHeaderInfo | null;
   tenantFooterInfo: TenantFooterInfo | null;
   setCurrentTenant: (tenant: Tenant) => void;
-  getTenantInfo: (tenantId: string, language: string) => Promise<void>;
+  getTenantInfo: (paramsOrTenantId: any, language?: string) => Promise<void>;
   isLoading: boolean;
   colorsLoaded: boolean;
   error: string | null;

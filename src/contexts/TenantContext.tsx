@@ -6,10 +6,10 @@
 import { DEFAULT_LANGUAGE, STORAGE_KEYS } from "@/config/config";
 import tenantApi from "@/services/tenantApi";
 import {
-    Tenant,
-    TenantContextType,
-    TenantFooterInfo,
-    TenantHeaderInfo,
+  Tenant,
+  TenantContextType,
+  TenantFooterInfo,
+  TenantHeaderInfo,
 } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useReducer } from "react";
@@ -99,11 +99,24 @@ export function TenantProvider({ children }: TenantProviderProps) {
     dispatch({ type: "SET_TENANT", payload: tenant });
   }, []);
 
-  // Get tenant info
+  // Get tenant info - supports both old and new call signatures
   const getTenantInfo = useCallback(
-    async (tenantId: string, language: string = DEFAULT_LANGUAGE) => {
+    async (paramsOrTenantId: any, language?: string) => {
       dispatch({ type: "SET_LOADING", payload: true });
       try {
+        // Determine parameters based on input type
+        let params: any;
+        if (typeof paramsOrTenantId === "string") {
+          // Old format: getTenantInfo(tenantId, language)
+          params = {
+            tenantid: paramsOrTenantId,
+            lang: language || DEFAULT_LANGUAGE,
+          };
+        } else {
+          // New format: getTenantInfo({ url, lang, code })
+          params = paramsOrTenantId;
+        }
+
         // Check cache first
         const cachedTenant = await AsyncStorage.getItem(
           STORAGE_KEYS.TENANT_CONFIG,
@@ -115,7 +128,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
         }
 
         // Fetch fresh data
-        const tenant = await tenantApi.getTenantInfo(tenantId, language);
+        const tenant = await tenantApi.getTenantInfo(params);
         dispatch({ type: "SET_TENANT", payload: tenant });
 
         // Cache tenant config
@@ -124,19 +137,21 @@ export function TenantProvider({ children }: TenantProviderProps) {
           JSON.stringify(tenant),
         );
 
-        // Fetch header info
-        const headerInfo = await tenantApi.getTenantHeaderInfo(
-          tenantId,
-          language,
-        );
-        dispatch({ type: "SET_HEADER_INFO", payload: headerInfo });
+        // Fetch header info if we have tenantid
+        if (params.tenantid) {
+          const headerInfo = await tenantApi.getTenantHeaderInfo(
+            params.tenantid,
+            params.lang || DEFAULT_LANGUAGE,
+          );
+          dispatch({ type: "SET_HEADER_INFO", payload: headerInfo });
 
-        // Fetch footer info
-        const footerInfo = await tenantApi.getTenantFooterInfo(
-          tenantId,
-          language,
-        );
-        dispatch({ type: "SET_FOOTER_INFO", payload: footerInfo });
+          // Fetch footer info
+          const footerInfo = await tenantApi.getTenantFooterInfo(
+            params.tenantid,
+            params.lang || DEFAULT_LANGUAGE,
+          );
+          dispatch({ type: "SET_FOOTER_INFO", payload: footerInfo });
+        }
 
         dispatch({ type: "SET_COLORS_LOADED", payload: true });
         dispatch({ type: "SET_ERROR", payload: null });
