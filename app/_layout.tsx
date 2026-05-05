@@ -4,6 +4,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import {
+  registerForPushNotificationsAsync,
+  showWelcomeNotification,
+} from "@/services/notificationService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DarkTheme,
@@ -12,41 +16,39 @@ import {
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 
 export const unstable_settings = {
   anchor: "(guest)",
 };
 
-// Inner component that uses tenant context
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
   const [isAppLoading, setIsAppLoading] = useState(true);
   const { getTenantInfo, isLoading: isTenantLoading } = useTenant();
+
+  const notificationStarted = useRef(false);
 
   useEffect(() => {
     const loadTenantFromAPI = async () => {
       try {
         const language = (await AsyncStorage.getItem("language")) || "en";
 
-        // Prepare tenant info parameters matching the web payload
         const params = {
-          url: MOODLE_CONFIG.URL_INFO, // https://accounts.naahel.com
+          url: MOODLE_CONFIG.URL_INFO,
           lang: language,
           code: "abc",
         };
 
-        // Load tenant info which includes branding, colors, etc.
         await getTenantInfo(params);
 
-        // Add a minimum loading time for better UX
         setTimeout(() => {
           setIsAppLoading(false);
         }, 1000);
       } catch (error) {
         console.error("Failed to load tenant info, using fallback config");
-        // Set a fallback loading time even if tenant load fails
+
         setTimeout(() => {
           setIsAppLoading(false);
         }, 2000);
@@ -57,6 +59,27 @@ function RootLayoutContent() {
   }, [getTenantInfo]);
 
   const isLoading = isAppLoading || isTenantLoading;
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (notificationStarted.current) return;
+
+    notificationStarted.current = true;
+
+    const setupNotifications = async () => {
+      try {
+        const token = await registerForPushNotificationsAsync();
+
+        console.log("Saved token:", token);
+
+        await showWelcomeNotification();
+      } catch (error) {
+        console.log("Notification setup error:", error);
+      }
+    };
+
+    setupNotifications();
+  }, [isLoading]);
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -82,7 +105,6 @@ function RootLayoutContent() {
   );
 }
 
-// Outer component that wraps providers
 export default function RootLayout() {
   return (
     <ConfigProvider>
