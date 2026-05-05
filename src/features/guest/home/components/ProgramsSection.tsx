@@ -3,14 +3,14 @@ import { getPrograms } from "@/services/homeApi";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 interface Program {
@@ -44,23 +44,27 @@ export default function ProgramsSection() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
 
-  // Load programs from API
   useEffect(() => {
     const loadPrograms = async () => {
-      if (!currentTenant?.id) return;
+      if (!currentTenant?.id) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         setError(null);
 
-        const response = await getPrograms(
+        const response: any = await getPrograms(
           String(currentTenant.id),
           currentTenant.language || "en",
-          { maxResults: 5 }
+          { maxResults: 5 },
         );
 
-        setPrograms(response?.programs || []);
-        setCategories(response?.categories || []);
+        setPrograms(Array.isArray(response?.programs) ? response.programs : []);
+        setCategories(
+          Array.isArray(response?.categories) ? response.categories : [],
+        );
       } catch (err: any) {
         console.error("Error loading programs:", err);
         setError(err.message || "Failed to load programs");
@@ -70,31 +74,26 @@ export default function ProgramsSection() {
     };
 
     loadPrograms();
-  }, [currentTenant?.id]);
+  }, [currentTenant?.id, currentTenant?.language]);
 
-  // Filter programs based on active tab
   const filteredPrograms = useMemo(() => {
-    if (activeTab === 0) {
-      return programs;
-    } else {
-      const categoryIndex = activeTab - 1;
-      const selectedCategory = categories[categoryIndex];
+    if (activeTab === 0) return programs;
 
-      if (!selectedCategory) return programs;
+    const selectedCategory = categories[activeTab - 1];
+    if (!selectedCategory) return programs;
 
-      return programs.filter((program) => {
-        if (!program.category) return false;
+    return programs.filter((program) => {
+      if (!program.category) return false;
 
-        if (Array.isArray(program.category)) {
-          return program.category.some(
-            (cat) => cat && cat.id === selectedCategory.id
-          );
-        }
+      if (Array.isArray(program.category)) {
+        return program.category.some(
+          (cat) => String(cat.id) === String(selectedCategory.id),
+        );
+      }
 
-        const singleCat = program.category as any;
-        return singleCat && singleCat.id === selectedCategory.id;
-      });
-    }
+      const singleCat = program.category as any;
+      return String(singleCat?.id) === String(selectedCategory.id);
+    });
   }, [programs, categories, activeTab]);
 
   const handleProgramPress = useCallback((program: Program) => {
@@ -107,8 +106,7 @@ export default function ProgramsSection() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#032E9B" />
-        <Text style={styles.loadingText}>Loading programs...</Text>
+        <ActivityIndicator size="large" color="#123CFF" />
       </View>
     );
   }
@@ -123,38 +121,34 @@ export default function ProgramsSection() {
 
   return (
     <View style={styles.container}>
-      {/* Section Title */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.sectionTitle}>Programs</Text>
-        <Text style={styles.sectionSubtitle}>Professional Development</Text>
-        <Text style={styles.sectionDescription}>
-          Advance your career with our comprehensive programs designed for
-          professional growth and success.
-        </Text>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>Programs</Text>
+          <Text style={styles.sectionSubtitle}>Professional Development</Text>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => router.push("/programs" as any)}
+        >
+          <Text style={styles.viewAll}>View all</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Category Tabs */}
+      <Text style={styles.sectionDescription}>
+        Advance your career with structured programs built for real growth.
+      </Text>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.tabsScrollView}
         contentContainerStyle={styles.tabsContainer}
       >
-        {/* All Programs Tab */}
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 0 && styles.tabActive]}
-          onPress={() => setActiveTab(0)}
-        >
-          <Text
-            style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}
-          >
-            ALL PROGRAMS
-          </Text>
-        </TouchableOpacity>
 
-        {/* Category Tabs */}
+
         {categories.slice(0, 4).map((category, index) => (
           <TouchableOpacity
+            activeOpacity={0.85}
             key={category.id}
             style={[styles.tab, activeTab === index + 1 && styles.tabActive]}
             onPress={() => setActiveTab(index + 1)}
@@ -164,14 +158,14 @@ export default function ProgramsSection() {
                 styles.tabText,
                 activeTab === index + 1 && styles.tabTextActive,
               ]}
+              numberOfLines={1}
             >
-              {category.name.toUpperCase()}
+              {category.name}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Programs List */}
       {filteredPrograms.length > 0 ? (
         <FlatList
           horizontal
@@ -185,23 +179,12 @@ export default function ProgramsSection() {
             />
           )}
           contentContainerStyle={styles.programsListContainer}
-          scrollEnabled={true}
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            No programs found for this category.
-          </Text>
+          <Text style={styles.emptyText}>No programs found.</Text>
         </View>
       )}
-
-      {/* Show All Button */}
-      <TouchableOpacity
-        style={styles.showAllButton}
-        onPress={() => router.push("/programs")}
-      >
-        <Text style={styles.showAllButtonText}>Show All Programs →</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -214,99 +197,69 @@ interface ProgramCardProps {
 const ProgramCard: React.FC<ProgramCardProps> = ({ program, onPress }) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const getLanguageName = (langCode?: string) => {
-    if (!langCode) return "";
-    const languageMap: { [key: string]: string } = {
-      ar: "Arabic",
-      en: "English",
-    };
-
-    const codes = langCode.split(",").map((code) => code.trim());
-    const names = codes.map((code) => languageMap[code] || code);
-    return names.join(", ");
-  };
-
-  const tags: string[] = [
-    getLanguageName(program.language),
-    ...(Array.isArray(program.category)
-      ? program.category.map((cat) => cat.name)
-      : []),
-    ...(Array.isArray(program.level)
-      ? program.level.map((level) =>
-          typeof level === "string" ? level : level.name || ""
-        )
-      : []),
-  ].filter(
-    (tag): tag is string => Boolean(tag) && tag !== "unknown" && tag !== ""
-  );
+  const price =
+    program.finalprice && Number(program.finalprice) > 0
+      ? `₪${program.finalprice}`
+      : "Free";
 
   return (
-    <TouchableOpacity style={styles.programCard} onPress={onPress}>
-      {/* Program Image */}
+    <TouchableOpacity
+      activeOpacity={0.88}
+      style={styles.programCard}
+      onPress={onPress}
+    >
       <View style={styles.imageContainer}>
         <Image
           source={{
-            uri: program.logo || "https://via.placeholder.com/180x120",
+            uri: program.logo || "https://via.placeholder.com/400x260",
           }}
           style={styles.programImage}
           resizeMode="cover"
         />
 
-        {/* Favorite Button */}
+        <View style={styles.imageOverlay} />
+
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>PROGRAM</Text>
+        </View>
+
         <TouchableOpacity
+          activeOpacity={0.8}
           style={styles.favoriteButton}
-          onPress={() => setIsFavorite(!isFavorite)}
+          onPress={() => setIsFavorite((prev) => !prev)}
         >
-          <Text style={styles.favoriteIcon}>{isFavorite ? "❤️" : "🤍"}</Text>
+          <Text style={styles.favoriteIcon}>{isFavorite ? "♥" : "♡"}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Program Info */}
       <View style={styles.programContent}>
-        {/* Tags */}
-        <View style={styles.tagsContainer}>
-          {tags.slice(0, 2).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Program Name */}
         <Text style={styles.programName} numberOfLines={2}>
           {program.name}
         </Text>
 
-        {/* Provider */}
-        <Text style={styles.provider}>
+        <Text style={styles.provider} numberOfLines={1}>
           💼 {program.tenant?.name || "Provider"}
         </Text>
 
-        {/* Price and Rating */}
-        <View style={styles.priceRatingContainer}>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              {program.finalprice && program.finalprice !== "Free"
-                ? `₪${program.finalprice}`
-                : "Free"}
+        <View style={styles.infoRow}>
+          <Text style={styles.ratingText}>
+            ⭐ {program.rating?.average || 0}
+            <Text style={styles.ratingCount}>
+              {" "}
+              ({program.rating?.total_users || 0})
             </Text>
-          </View>
+          </Text>
 
-          {program.rating && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingStars}>
-                ⭐ {program.rating.average}
-              </Text>
-              <Text style={styles.ratingCount}>
-                ({program.rating.total_users})
-              </Text>
-            </View>
-          )}
+          <Text style={styles.price}>{price}</Text>
         </View>
 
-        {/* Enroll Button */}
-        <TouchableOpacity style={styles.enrollButton}>
-          <Text style={styles.enrollButtonText}>📚 ENROLL NOW</Text>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.enrollButton}
+          onPress={onPress}
+        >
+          <Text style={styles.enrollButtonText}>ENROLL NOW</Text>
+          <Text style={styles.enrollArrow}>→</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -315,91 +268,95 @@ const ProgramCard: React.FC<ProgramCardProps> = ({ program, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
     backgroundColor: "#fff",
-    marginVertical: 12,
-    borderRadius: 12,
+    paddingTop: 8,
+    paddingBottom: 26,
   },
 
   loadingContainer: {
+    backgroundColor: "#fff",
     paddingVertical: 40,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-
   errorContainer: {
-    paddingVertical: 20,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     backgroundColor: "#FFF3CD",
-    borderRadius: 8,
-    marginVertical: 12,
+    borderRadius: 18,
   },
 
   errorText: {
     fontSize: 14,
     color: "#856404",
-    fontWeight: "500",
+    fontWeight: "800",
   },
 
-  titleContainer: {
-    marginBottom: 20,
+  sectionHeader: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
   },
 
   sectionTitle: {
     fontSize: 24,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
+    fontWeight: "900",
+    color: "#111827",
   },
 
   sectionSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#032E9B",
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#123CFF",
+    marginTop: 3,
+  },
+
+  viewAll: {
+    color: "#123CFF",
+    fontSize: 14,
+    fontWeight: "900",
+    paddingTop: 6,
   },
 
   sectionDescription: {
-    fontSize: 12,
-    color: "#666",
-    lineHeight: 18,
-  },
-
-  tabsScrollView: {
-    marginBottom: 20,
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 20,
+    fontWeight: "600",
+    marginBottom: 16,
   },
 
   tabsContainer: {
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+    gap: 10,
   },
 
   tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#F7F5D7",
+    height: 40,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
   },
 
   tabActive: {
-    backgroundColor: "#000",
+    backgroundColor: "#123CFF",
   },
 
   tabText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#111827",
+    maxWidth: 120,
   },
 
   tabTextActive: {
@@ -407,35 +364,42 @@ const styles = StyleSheet.create({
   },
 
   programsListContainer: {
-    paddingRight: 16,
-    gap: 12,
+    paddingLeft: 20,
+    paddingRight: 20,
+    gap: 16,
   },
 
   emptyContainer: {
+    marginHorizontal: 20,
     paddingVertical: 40,
+    borderRadius: 22,
+    backgroundColor: "#F7F8FC",
     alignItems: "center",
   },
 
   emptyText: {
     fontSize: 14,
-    color: "#999",
-    fontStyle: "italic",
+    color: "#6B7280",
+    fontWeight: "800",
   },
 
   programCard: {
-    width: 180,
+    width: 220,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 22,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginRight: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+    marginBottom: 8,
   },
 
   imageContainer: {
+    height: 135,
+    backgroundColor: "#EEF1FF",
     position: "relative",
-    height: 120,
-    backgroundColor: "#f0f0f0",
   },
 
   programImage: {
@@ -443,120 +407,114 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.12)",
+  },
+
+  badge: {
+    position: "absolute",
+    left: 12,
+    bottom: -13,
+    backgroundColor: "#E8EAFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 13,
+  },
+
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#123CFF",
+  },
+
   favoriteButton: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0,0,0,0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
 
   favoriteIcon: {
-    fontSize: 16,
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#fff",
+    lineHeight: 28,
   },
 
   programContent: {
-    padding: 12,
-  },
-
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-    marginBottom: 8,
-  },
-
-  tag: {
-    backgroundColor: "#F5F1DF",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-
-  tagText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#000",
+    paddingHorizontal: 14,
+    paddingTop: 24,
+    paddingBottom: 14,
   },
 
   programName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 6,
-    height: 32,
-  },
-
-  provider: {
-    fontSize: 11,
-    color: "#666",
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "900",
+    color: "#111827",
+    minHeight: 42,
     marginBottom: 8,
   },
 
-  priceRatingContainer: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#E0E0E0",
-    paddingVertical: 8,
-    marginBottom: 10,
-  },
-
-  priceContainer: {
-    marginBottom: 6,
-  },
-
-  price: {
+  provider: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#000",
+    color: "#6B7280",
+    fontWeight: "700",
+    marginBottom: 12,
   },
 
-  ratingContainer: {
+  infoRow: {
+    borderTopWidth: 1,
+    borderTopColor: "#EEF0F4",
+    paddingTop: 12,
+    marginBottom: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "space-between",
   },
 
-  ratingStars: {
-    fontSize: 11,
-    fontWeight: "600",
+  ratingText: {
+    fontSize: 12,
+    color: "#111827",
+    fontWeight: "900",
   },
 
   ratingCount: {
-    fontSize: 10,
-    color: "#666",
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+
+  price: {
+    fontSize: 15,
+    color: "#111827",
+    fontWeight: "900",
   },
 
   enrollButton: {
-    backgroundColor: "#000",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#111827",
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
 
   enrollButtonText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
     color: "#fff",
+    fontWeight: "900",
   },
 
-  showAllButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
-  },
-
-  showAllButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+  enrollArrow: {
+    fontSize: 16,
+    color: "#fff",
+    fontWeight: "900",
   },
 });

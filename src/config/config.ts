@@ -29,6 +29,10 @@ export const MOODLE_FUNCTIONS = {
   GET_TENANT_LOGIN_INFO: "local_guestapi_get_tenant_login_info",
   GET_SESSION_USER: "local_guestapi_get_session_user",
   LOGOUT_MOODLE_SESSION: "local_guestapi_logout_moodle_session",
+  GET_ABOUT_US: "local_guestapi_get_aboutus_info",
+  GET_ISSUED_CERTIFICATE: "local_guestapi_get_issued_certificate",
+  GET_FAQS: "local_guestapi_get_faqs_info",
+  CONTACT_US: "local_guestapi_get_tenant_contact_us",
 };
 
 // Default language and direction

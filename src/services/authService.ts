@@ -38,10 +38,7 @@ export async function moodleLogin(
 /**
  * Get tenant login configuration
  */
-export async function getTenantLoginInfo(
-  tenantid: string,
-  lang: string,
-): Promise<any> {
+export async function logoLogin(tenantid: string, lang: string): Promise<any> {
   try {
     const response = await callMoodleApi(
       MOODLE_FUNCTIONS.GET_TENANT_LOGIN_INFO,
@@ -61,5 +58,5 @@ export async function getTenantLoginInfo(
 
 export default {
   moodleLogin,
-  getTenantLoginInfo,
+  logoLogin,
 };

@@ -42,14 +42,17 @@ export async function getCourseDetails(
   language: string,
 ): Promise<Course> {
   try {
-    const courses = await getAvailableCourses(tenantId, language);
-    const course = courses.find((c) => c.id === courseId);
+    const response = await callMoodleApi<Course>(
+      "local_guestapi_get_course_details", // لازم تضيفها
+      {
+        tenantid: tenantId,
+        courseid: courseId,
+        lang: language,
+      },
+      MOODLE_CONFIG.DEFAULT_WS_TOKEN,
+    );
 
-    if (!course) {
-      throw new Error("Course not found");
-    }
-
-    return course;
+    return response;
   } catch (error) {
     console.error("Get course details error:", error);
     throw error;

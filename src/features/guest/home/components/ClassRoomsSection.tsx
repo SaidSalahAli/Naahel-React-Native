@@ -3,15 +3,15 @@ import { getClassrooms } from "@/services/homeApi";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 interface Trainer {
@@ -67,7 +67,7 @@ export default function ClassRoomsSection() {
         const response = await getClassrooms(
           String(currentTenant.id),
           currentTenant.language || "en",
-          { maxResults: 5 }
+          { maxResults: 5 },
         );
 
         setClassrooms(response?.classrooms || []);
@@ -98,7 +98,7 @@ export default function ClassRoomsSection() {
 
         if (Array.isArray(classroom.category)) {
           return classroom.category.some(
-            (cat) => cat && cat.id === selectedCategory.id
+            (cat) => cat && cat.id === selectedCategory.id,
           );
         }
 
@@ -224,7 +224,10 @@ interface ClassRoomCardProps {
   onPress: () => void;
 }
 
-const ClassRoomCard: React.FC<ClassRoomCardProps> = ({ classroom, onPress }) => {
+const ClassRoomCard: React.FC<ClassRoomCardProps> = ({
+  classroom,
+  onPress,
+}) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
   // Get language names
@@ -247,11 +250,11 @@ const ClassRoomCard: React.FC<ClassRoomCardProps> = ({ classroom, onPress }) => 
       : []),
     ...(Array.isArray(classroom.level)
       ? classroom.level.map((level) =>
-          typeof level === "string" ? level : level.name || ""
+          typeof level === "string" ? level : level.name || "",
         )
       : []),
   ].filter(
-    (tag): tag is string => Boolean(tag) && tag !== "unknown" && tag !== ""
+    (tag): tag is string => Boolean(tag) && tag !== "unknown" && tag !== "",
   );
 
   // Format date
@@ -297,7 +300,8 @@ const ClassRoomCard: React.FC<ClassRoomCardProps> = ({ classroom, onPress }) => 
         <Image
           source={{
             uri:
-              classroom.logo || "https://via.placeholder.com/200x200?text=Class",
+              classroom.logo ||
+              "https://via.placeholder.com/200x200?text=Class",
           }}
           style={styles.classroomImage}
           resizeMode="cover"

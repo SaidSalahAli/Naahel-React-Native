@@ -13,10 +13,13 @@ import {
     View,
 } from "react-native";
 
-// API service - we'll create this
+interface ItemInfo {
+  id: string | number;
+  name: string;
+}
 
 interface Course {
-  id: string;
+  id: string | number;
   name: string;
   logo?: string;
   description?: string;
@@ -26,14 +29,14 @@ interface Course {
   };
   finalprice?: string | number;
   language?: string;
-  category?: Array<{ id: string; name: string }>;
-  level?: Array<{ name: string }>;
+  category?: ItemInfo | ItemInfo[];
+  level?: ItemInfo | ItemInfo[];
   tenant?: { name: string };
   itemtype?: string;
 }
 
 interface Category {
-  id: string;
+  id: string | number;
   name: string;
 }
 
@@ -42,163 +45,112 @@ export default function CoursesSection() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
 
-  // Load courses from API
   useEffect(() => {
     const loadCourses = async () => {
-      if (!currentTenant?.id) return;
+      if (!currentTenant?.id) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
-        setError(null);
 
-        const response = await getCourses(
+        const response: any = await getCourses(
           String(currentTenant.id),
           currentTenant.language || "en",
           { maxResults: 10 },
         );
 
-        setCourses(response?.courses || []);
-        setCategories(response?.categories || []);
-      } catch (err: any) {
-        console.error("Error loading courses:", err);
-        setError(err.message || "Failed to load courses");
+        setCourses(Array.isArray(response?.courses) ? response.courses : []);
+        setCategories(
+          Array.isArray(response?.categories) ? response.categories : [],
+        );
+      } catch (error) {
+        console.log("Error loading courses:", error);
       } finally {
         setLoading(false);
       }
     };
 
     loadCourses();
-  }, [currentTenant?.id]);
+  }, [currentTenant?.id, currentTenant?.language]);
 
-  // Filter courses based on active tab
   const filteredCourses = useMemo(() => {
-    if (activeTab === 0) {
-      return courses;
-    } else {
-      const categoryIndex = activeTab - 1;
-      const selectedCategory = categories[categoryIndex];
+    if (activeTab === 0) return courses;
 
-      if (!selectedCategory) return courses;
+    const selectedCategory = categories[activeTab - 1];
+    if (!selectedCategory) return courses;
 
-      return courses.filter((course) => {
-        if (!course.category) return false;
+    return courses.filter((course) => {
+      if (!course.category) return false;
 
-        if (Array.isArray(course.category)) {
-          return course.category.some(
-            (cat) => cat && cat.id === selectedCategory.id,
-          );
-        }
+      if (Array.isArray(course.category)) {
+        return course.category.some(
+          (cat) => String(cat.id) === String(selectedCategory.id),
+        );
+      }
 
-        // Handle single category object
-        const singleCat = course.category as any;
-        return singleCat && singleCat.id === selectedCategory.id;
-      });
-    }
+      return String(course.category.id) === String(selectedCategory.id);
+    });
   }, [courses, categories, activeTab]);
 
   const handleCoursePress = useCallback((course: Course) => {
     router.push({
       pathname: "/courses/[id]",
-      params: { id: course.id, course: JSON.stringify(course) },
+      params: {
+        id: String(course.id),
+        course: JSON.stringify(course),
+      },
     });
   }, []);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#032E9B" />
-        <Text style={styles.loadingText}>Loading courses...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>⚠️ {error}</Text>
+        <ActivityIndicator size="large" color="#123CFF" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Section Title */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.sectionTitle}>Courses</Text>
-        <Text style={styles.sectionSubtitle}>Your Learning Journey</Text>
-        <Text style={styles.sectionDescription}>
-          Explore our diverse courses and find the perfect fit for your goals!
-        </Text>
-      </View>
+    <View style={styles.wrapper}>
+      <SectionHeader
+        title="Recommended for you"
+        onPress={() => router.push("/courses" as any)}
+      />
 
-      {/* Category Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScrollView}
-        contentContainerStyle={styles.tabsContainer}
-      >
-        {/* All Courses Tab */}
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 0 && styles.tabActive]}
-          onPress={() => setActiveTab(0)}
-        >
-          <Text
-            style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}
-          >
-            ALL COURSES
-          </Text>
-        </TouchableOpacity>
-
-        {/* Category Tabs */}
-        {categories.slice(0, 4).map((category, index) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[styles.tab, activeTab === index + 1 && styles.tabActive]}
-            onPress={() => setActiveTab(index + 1)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === index + 1 && styles.tabTextActive,
-              ]}
-            >
-              {category.name.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Courses List */}
-      {filteredCourses.length > 0 ? (
+      {filteredCourses.length > 0 && (
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={filteredCourses}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <CourseCard course={item} onPress={() => handleCoursePress(item)} />
           )}
-          contentContainerStyle={styles.coursesListContainer}
-          scrollEnabled={true}
+          contentContainerStyle={styles.list}
         />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            No courses found for this category.
-          </Text>
-        </View>
       )}
 
-      {/* Show All Button */}
-      <TouchableOpacity
-        style={styles.showAllButton}
-        onPress={() => router.push("/courses")}
-      >
-        <Text style={styles.showAllButtonText}>Show All Courses →</Text>
+
+    </View>
+  );
+}
+
+function SectionHeader({
+  title,
+  onPress,
+}: {
+  title: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <TouchableOpacity onPress={onPress}>
+        <Text style={styles.viewAll}>View all</Text>
       </TouchableOpacity>
     </View>
   );
@@ -212,336 +164,256 @@ interface CourseCardProps {
 const CourseCard: React.FC<CourseCardProps> = ({ course, onPress }) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const tags: string[] = [
-    course.language,
-    ...(Array.isArray(course.category)
-      ? course.category.map((cat) => cat.name)
-      : []),
-    ...(Array.isArray(course.level)
-      ? course.level.map((level) =>
-          typeof level === "string" ? level : level.name || "",
-        )
-      : []),
-  ].filter(
-    (tag): tag is string => Boolean(tag) && tag !== "unknown" && tag !== "",
-  );
+  const price =
+    course.finalprice && Number(course.finalprice) > 0
+      ? `${course.finalprice}`
+      : "Free";
 
   return (
-    <TouchableOpacity style={styles.courseCard} onPress={onPress}>
-      {/* Course Image */}
-      <View style={styles.courseImageContainer}>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      style={styles.card}
+      onPress={onPress}
+    >
+      <View style={styles.imageBox}>
         <Image
-          source={{ uri: course.logo || "https://via.placeholder.com/180x120" }}
-          style={styles.courseImage}
+          source={{ uri: course.logo || "https://via.placeholder.com/300" }}
+          style={styles.image}
           resizeMode="cover"
         />
 
-        {/* Favorite Button */}
         <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={() => setIsFavorite(!isFavorite)}
+          activeOpacity={0.8}
+          style={styles.favorite}
+          onPress={() => setIsFavorite((prev) => !prev)}
         >
-          <Text style={styles.favoriteIcon}>{isFavorite ? "❤️" : "🤍"}</Text>
+          <Text style={styles.favoriteText}>{isFavorite ? "♥" : "♡"}</Text>
         </TouchableOpacity>
+
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>COURSE</Text>
+        </View>
       </View>
 
-      {/* Course Info */}
-      <View style={styles.courseContent}>
-        {/* Tags */}
-        <View style={styles.tagsContainer}>
-          {tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Course Name */}
-        <Text style={styles.courseName} numberOfLines={2}>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
           {course.name}
         </Text>
 
-        {/* Provider */}
-        <Text style={styles.provider}>
-          💼 {course.tenant?.name || "Provider"}
+        <Text style={styles.provider} numberOfLines={1}>
+          💼 {course.tenant?.name || "AlRajhi Bank"}
         </Text>
 
-        {/* Price and Rating */}
-        <View style={styles.priceRatingContainer}>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              {course.finalprice && course.finalprice !== "Free"
-                ? `${course.finalprice} SAR`
-                : "Free"}
+        <View style={styles.cardFooter}>
+          <Text style={styles.rating}>
+            ⭐ {course.rating?.average || 0}
+            <Text style={styles.ratingUsers}>
+              {" "}
+              ({course.rating?.total_users || 0})
             </Text>
-          </View>
+          </Text>
 
-          {course.rating && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingStars}>⭐ {course.rating.average}</Text>
-              <Text style={styles.ratingCount}>
-                ({course.rating.total_users})
-              </Text>
-            </View>
-          )}
+          <Text style={styles.price}>{price}</Text>
         </View>
-
-        {/* Add to Cart Button */}
-        <TouchableOpacity style={styles.addToCartButton}>
-          <Text style={styles.addToCartButtonText}>🛒 Add to Cart</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
+function CategoryChip({
+  title,
+  icon,
+  active,
+  onPress,
+}: {
+  title: string;
+  icon: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={[styles.categoryChip, active && styles.categoryChipActive]}
+    >
+      <Text style={[styles.categoryIcon, active && styles.categoryIconActive]}>
+        {icon}
+      </Text>
+      <Text style={[styles.categoryText, active && styles.categoryTextActive]}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+  wrapper: {
     backgroundColor: "#fff",
-    marginVertical: 12,
-    borderRadius: 12,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
-
   loadingContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-
-  errorContainer: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    backgroundColor: "#FFF3CD",
-    borderRadius: 8,
-    marginVertical: 12,
-  },
-
-  errorText: {
-    fontSize: 14,
-    color: "#856404",
-    fontWeight: "500",
-  },
-
-  titleContainer: {
-    marginBottom: 20,
-  },
-
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-  },
-
-  sectionSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#032E9B",
-    marginBottom: 8,
-  },
-
-  sectionDescription: {
-    fontSize: 12,
-    color: "#666",
-    lineHeight: 18,
-  },
-
-  // Tabs
-  tabsScrollView: {
-    marginBottom: 20,
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
-  },
-
-  tabsContainer: {
-    gap: 8,
-  },
-
-  tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#F7F5D7",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  tabActive: {
-    backgroundColor: "#000",
-  },
-
-  tabText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-  },
-
-  tabTextActive: {
-    color: "#fff",
-  },
-
-  // Courses List
-  coursesListContainer: {
-    paddingRight: 16,
-    gap: 12,
-  },
-
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-
-  emptyText: {
-    fontSize: 14,
-    color: "#999",
-    fontStyle: "italic",
-  },
-
-  // Course Card
-  courseCard: {
-    width: 180,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  sectionHeader: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: {
+    color: "#111827",
+    fontSize: 23,
+    fontWeight: "900",
+  },
+  viewAll: {
+    color: "#123CFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  list: {
+    paddingLeft: 20,
+    paddingRight: 12,
+    gap: 16,
+  },
+  card: {
+    width: 210,
+    borderRadius: 20,
+    backgroundColor: "#fff",
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginRight: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.11,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 6,
+    marginBottom: 26,
   },
-
-  courseImageContainer: {
+  imageBox: {
+    height: 128,
+    backgroundColor: "#EEF1FF",
     position: "relative",
-    height: 120,
-    backgroundColor: "#f0f0f0",
   },
-
-  courseImage: {
+  image: {
     width: "100%",
     height: "100%",
   },
-
-  favoriteButton: {
+  favorite: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0,0,0,0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
-
-  favoriteIcon: {
-    fontSize: 16,
+  favoriteText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "900",
   },
-
-  courseContent: {
-    padding: 12,
+  badge: {
+    position: "absolute",
+    left: 12,
+    bottom: -14,
+    backgroundColor: "#FFE66D",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-    marginBottom: 8,
-  },
-
-  tag: {
-    backgroundColor: "#F5F1DF",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-
-  tagText: {
+  badgeText: {
+    color: "#111827",
     fontSize: 10,
-    fontWeight: "600",
-    color: "#000",
+    fontWeight: "900",
   },
-
-  courseName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 6,
-    height: 32,
+  cardBody: {
+    paddingHorizontal: 14,
+    paddingTop: 24,
+    paddingBottom: 14,
   },
-
-  provider: {
-    fontSize: 11,
-    color: "#666",
-    marginBottom: 8,
-  },
-
-  priceRatingContainer: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#E0E0E0",
-    paddingVertical: 8,
+  cardTitle: {
+    color: "#111827",
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "900",
+    minHeight: 42,
     marginBottom: 10,
   },
-
-  priceContainer: {
-    marginBottom: 6,
-  },
-
-  price: {
+  provider: {
+    color: "#777",
     fontSize: 12,
     fontWeight: "600",
-    color: "#000",
+    marginBottom: 14,
   },
-
-  ratingContainer: {
+  cardFooter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "space-between",
   },
-
-  ratingStars: {
-    fontSize: 11,
+  rating: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  ratingUsers: {
+    color: "#777",
     fontWeight: "600",
   },
-
-  ratingCount: {
-    fontSize: 10,
-    color: "#666",
+  price: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "900",
   },
-
-  addToCartButton: {
-    backgroundColor: "#000",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+  browseTitle: {
+    paddingHorizontal: 20,
+    color: "#111827",
+    fontSize: 23,
+    fontWeight: "900",
+    marginBottom: 14,
+  },
+  categories: {
+    paddingLeft: 20,
+    paddingRight: 20,
+    gap: 12,
+  },
+  categoryChip: {
+    minWidth: 98,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: "#fff",
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 4,
   },
-
-  addToCartButtonText: {
-    fontSize: 11,
-    fontWeight: "600",
+  categoryChipActive: {
+    backgroundColor: "#123CFF",
+  },
+  categoryIcon: {
+    color: "#123CFF",
+    fontSize: 24,
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  categoryIconActive: {
     color: "#fff",
   },
-
-  showAllButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
+  categoryText: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "800",
   },
-
-  showAllButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+  categoryTextActive: {
+    color: "#fff",
   },
 });

@@ -41,7 +41,7 @@ export default function AppLoader() {
         ]}
       >
         <Image
-          source={require("../assets/images/splash-icon.png")}
+          source={require("../assets/images/android-icon-background.png")}
           style={styles.logo}
           resizeMode="contain"
         />

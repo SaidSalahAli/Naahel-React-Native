@@ -42,8 +42,16 @@ export async function getProgramDetails(
   language: string,
 ): Promise<Program> {
   try {
-    const programs = await getAvailablePrograms(tenantId, language);
-    const program = programs.find((p) => p.id === programId);
+    const response = await callMoodleApi<Program[]>(
+      "local_guestapi_get_program_details",
+      {
+        tenantid: tenantId,
+        programid: programId,
+        lang: language,
+      },
+      MOODLE_CONFIG.DEFAULT_WS_TOKEN,
+    );
+    const program = response.find((p) => p.id === programId);
 
     if (!program) {
       throw new Error("Program not found");
