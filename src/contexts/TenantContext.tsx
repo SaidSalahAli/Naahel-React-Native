@@ -137,18 +137,21 @@ export function TenantProvider({ children }: TenantProviderProps) {
           JSON.stringify(tenant),
         );
 
-        // Fetch header info if we have tenantid
-        if (params.tenantid) {
+        // Fetch header info using tenant ID from response
+        if (tenant?.id) {
+          const tenantId = String(tenant.id);
+          const lang = params.lang || DEFAULT_LANGUAGE;
+
           const headerInfo = await tenantApi.getTenantHeaderInfo(
-            params.tenantid,
-            params.lang || DEFAULT_LANGUAGE,
+            tenantId,
+            lang,
           );
           dispatch({ type: "SET_HEADER_INFO", payload: headerInfo });
 
           // Fetch footer info
           const footerInfo = await tenantApi.getTenantFooterInfo(
-            params.tenantid,
-            params.lang || DEFAULT_LANGUAGE,
+            tenantId,
+            lang,
           );
           dispatch({ type: "SET_FOOTER_INFO", payload: footerInfo });
         }

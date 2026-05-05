@@ -14,24 +14,53 @@ export interface User {
   pictureurl?: string;
 }
 
-// Tenant Type
-export interface Tenant {
+// Subscription Plan Type
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+}
+
+// Service Type
+export interface Service {
   id: string;
   name: string;
-  language: string;
-  direction: "rtl" | "ltr";
-  primaryColor: string;
-  secondaryColor: string;
-  teritoryColor: string;
-  logo: string;
-  services: string[];
+  link?: string;
+  seacrh_key?: string;
+}
+
+// Tenant Type
+export interface Tenant {
+  id: number | string;
+  name: string;
+  language?: string;
+  direction?: "rtl" | "ltr";
+  primaryColor?: string;
+  primarycolor?: string;
+  secondaryColor?: string;
+  secondarycolor?: string;
+  teritoryColor?: string;
+  territoreycolor?: string;
+  logo?: string;
+  services?: Service[] | string[];
+  expirationdate?: number;
+  subscriptionplan?: SubscriptionPlan;
 }
 
 // Tenant Header Info
 export interface TenantHeaderInfo {
-  logo: string;
-  name: string;
+  id?: number | string;
+  logo?: string;
+  name?: string;
   description?: string;
+  primarycolor?: string;
+  secondarycolor?: string;
+  territoreycolor?: string;
+  aboutus?: Array<{ status: string; link: string }>;
+  contactus?: string;
+  faq?: Array<{ status: string; link: string }>;
+  services?: Service[];
+  expirationdate?: number;
+  subscriptionplan?: SubscriptionPlan;
 }
 
 // Tenant Footer Info
